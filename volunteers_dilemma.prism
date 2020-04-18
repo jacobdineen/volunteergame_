@@ -1,0 +1,181 @@
+// ----------------------------------------
+// Authorship
+// ----------------------------------------
+// CPS Final Project
+// Jacob Dineen, A S M Ahsan-Ul Haque, Matthew Bielska
+// jd5ed, ah3wj, mb6xn]@virginia.e
+// ----------------------------------------
+
+
+// ----------------------------------------
+// Gameplay
+// ----------------------------------------
+// Volunteer's Dilemma Game
+// Player are instantiated with initial resource allocation
+// There is a finite length target (rmax). rmax is less than or equal to the number of agents in the game, n
+// Reward is distributed if sum(si...sn) >= rmax
+//    - This reward decays for over-donation
+//    - Rewards can be utilizied at round k+1
+//        - player can donate 0/50/100% of resources at round k
+//            - resources denoted are resourced expended
+
+
+
+// ----------------------------------------
+// Init Params
+// ----------------------------------------
+csg //concurrent stochastic game
+
+player p1 m1 endplayer
+player p2 m2 endplayer
+player p3 m3 endplayer
+player p4 m4 endplayer
+
+const int n = 4 // number of players
+const int kmax; // number of rounds. k is the current round
+const int einit // initial resource allocation
+const int emax // max resources procured by agent v_i
+const int rmax // Resources needed for reward allocation
+
+
+// ----------------------------------------
+// round counter (https://www.prismmodelchecker.org/casestudies/public_good_game.php)
+// ----------------------------------------
+module counter
+
+	k : [0..kmax+1] init 0; // round. init to zero. Bounded by kmax. Finite length game
+
+	[] k<=kmax -> (k'=k+1);
+
+endmodule
+
+
+// ----------------------------------------
+// Player Modules
+// ----------------------------------------
+// module for player 1
+module m1
+    c1 : [0..emax] init einit; // resources for player i
+    s1 : [0..emax] init 0; // resources to be shared
+
+    // the resources for the player are updated via floor(/sigma_s_i...n / rmax ), e.g., if rmax is hit by resource donations,
+    // each agent is distributed back reward. This reward should only be passed back in full if over-donating does not occur.
+    // e.g., if there are four agents and three are required to donate, if all four donate, full reward is not distributed.
+
+    // Because rewards are distributed back into the resource allocation, it makes sense to allow for partial donations of total Resources
+    // e.g., if a player has four total resources after round 3, they can donate floor(p * c1 resources toward the pot)
+    // we use similar noted in the public games literature to avoid a continuous search space for strategy trees
+    // Note that in rounds where the agent can't donate partial resources, e.g. floor(p * c1) < 1, they won't donate at all in this mechanism
+
+
+    // while the round is less than the max round, if an agent donates their resources with probability of 0, they remain in the same instantiated
+    // state. The resources are updated as the minimum of emax (a max resource threshold) against their initial resource allocation minus their contribution
+    // We then add in rewards if rmax is hit. Because reward decays with increased presence of over-donation, we pass back rewards as
+    // (1 / floor((1 / rmax) * (s1' + s2' +s3' + s4')))  which handles the two extreme cases
+    // 1) if strictly less than rmax resources are donated, the denominator is bounded by zero, so no reward is passed back
+    // 2) if emax resources are donated by each agent (thresholded to 40 in this setup) there is substantially lower reward than if rmax resources are donated
+
+    // An example, assume that we are in round k = 5. rmax = 3, n = 4
+    // All agents have played winning, cohesive strategies to this point. So after three rounds, a reward = 1 was passed back each time
+    // c1 = c2 = c3 = c4 = 4 (all agents have 4 resources in hand).
+    // There are two strategies that maximize reward here: either 3/4 agents donate a single resource, or one agent donates all necessary resources
+    // and the other three free ride. If all agents choose to donate rmax = 3 resources, they win, but not efficiently. The decaying factor
+    // of the reward function means that the agents only get .25 resources after the end of the round. And, remember here, they expend resources via donation.
+
+
+    // here, the player chooses to donate 0% of their resources
+    // we add reward to existing resources iff the sum of resources to be shared is greater than or equal to resources needed
+
+    [i1_0] k<kmax -> (s1'=floor(0 * c1)) & (c1'= min(emax, c1 - s1' + (1 / floor((1 / rmax) * (s1'+s2'+s3'+s4')))));
+
+    // if the resources for player i at round k are less than 2, no transition will occur, as no donation will occur
+  	[i1_50] k<kmax -> (s1'=floor(0.5*c1)) & (c1'= min(emax, c1 - s1' + (1 / floor((1 / rmax) * (s1'+s2'+s3'+s4')))));
+
+    // Here, the player donates 100% of their resource allocation towards rmax
+  	[i1_100] k<kmax -> (s1'=1) & (c1'= min(emax, c1 - s1' + (1 / floor((1 / rmax) * (s1'+s2'+s3'+s4')))));
+
+  	[done1] k>=kmax -> (c1'=0) & (s1'=0);
+
+endmodule
+
+
+// construct further modules through renaming
+// all players share the same: init resource allocation
+// this is borrowed PORISM code. I'm not sure what the s1 = s2, s2 =s1
+
+
+// player 2
+module m2 = m1[c1=c2,
+		s1=s2,
+		s2=s1,
+		i1_0=i2_0,
+		i1_50=i2_50,
+		i1_100=i2_100,
+		done1=done2] endmodule
+
+// player 3
+module m3 = m1[c1=c3,
+		s1=s3,
+		s3=s1,
+		i1_0=i3_0,
+		i1_50=i3_50,
+		i1_100=i3_100,
+		done1=done3] endmodule
+
+// player 4
+module m4 = m1[c1=c4
+		s1=s4,
+		s4=s1,
+		i1_0=i2_0,
+		i1_50=i2_50,
+		i1_100=i2_100,
+		done1=done3] endmodule
+
+// ------------------------------------------
+// rewards at round k for agent v_i
+// ------------------------------------------
+
+// time dependent rewards synced throughout gameplay. ri is the reward for agent i at round k
+// to be used for strategy synthesis
+
+rewards "r1"
+	true : c1 - einit;
+endrewards
+
+rewards "r2"
+	true : c2 - einit;
+endrewards
+
+rewards "r3"
+	true : c3 - einit;
+endrewards
+
+rewards "r4"
+	true : c4 - einit;
+endrewards
+
+
+
+// ------------------------------------------
+// Final Rewards for agent v_i
+// ------------------------------------------
+
+// if the current round is equal to the max round, take the current resource allocation for agent v_i, c_i,
+// and subtract it from the init resource allocation
+
+
+rewards "done1"
+	k=kmax : c1 - einit;
+endrewards
+
+rewards "done2"
+	k=kmax : c2 - einit;
+endrewards
+
+rewards "done3"
+	k=kmax : c3 - einit;
+endrewards
+
+rewards "done4"
+	k=kmax : c4 - einit;
+endrewards
