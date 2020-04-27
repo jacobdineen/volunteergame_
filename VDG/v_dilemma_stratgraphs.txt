@@ -1,0 +1,14 @@
+const int K = 3;
+
+
+<<p1,p2,p3>> Pmax=? [F <= kmax +1 "perfect"]
+
+<<p1,p2,p3>> Pmin=? [F <= kmax +1 "perfect"]
+
+<<p1:p2,p3>> max=? (R{"r1"}[I=K] + R{"r23"}[I=K])
+
+<<p1,p2:p3>> max=? (R{"r12"}[I=K] + R{"r3"}[I=K])
+
+<<p1,p2,p3>> Pmax=? [F <= kmax +1 "error"]
+
+<<p1,p2,p3>> Pmin=? [F <= kmax +1 "error"]
