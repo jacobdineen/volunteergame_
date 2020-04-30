@@ -33,9 +33,9 @@ player p3 m3 endplayer
 
 const int n = 3; // number of players
 const int kmax; // number of rounds. k is the current round
-const int einit; // initial resource allocation
+const int einit = 100; // initial resource allocation
 const int rmax =1000; // max resources procured by agent v_i
-const int rneeded = 200; // Resources needed for reward allocation  ORIG:200
+const int rneeded; // Resources needed for reward allocation  ORIG:200
 const int scaling = 2;
 const int roptimum = floor(rneeded*scaling/n);
 
@@ -117,13 +117,13 @@ endmodule
         s1 : [0..rmax] init 0; // resources to be shared
 
       	[i1_0] k<kmax -> (s1'=floor(0 * c1)) & (c1'= min(rmax, floor( (c1 - s1') + 
-((s1' + s2' + s3' < rneeded) ? 0: ( (s1' + s2' + s3' = rneeded)? roptimum: ( -.01429*(s1'+s2'+s3' - rneeded) + rneeded * scaling ) ) ) ) ) );
+((s1' + s2' + s3' < rneeded) ? 0: ( (s1' + s2' + s3' = rneeded)? roptimum / n: ( -.01429*(s1'+s2'+s3' - rneeded) + rneeded * scaling ) / n) ) ) ) );
 
       	[i1_50] k<kmax -> (s1'=floor(0.5 * c1)) & (c1'= min(rmax, floor( (c1 - s1') + 
-((s1' + s2' + s3' < rneeded) ? 0: ( (s1' + s2' + s3' = rneeded)? roptimum: ( -.01429*(s1'+s2'+s3' - rneeded) + rneeded * scaling) ) ) ) ) );
+((s1' + s2' + s3' < rneeded) ? 0: ( (s1' + s2' + s3' = rneeded)? roptimum/ n: ( -.01429*(s1'+s2'+s3' - rneeded) + rneeded * scaling) / n) ) ) ) );
 
       	[i1_100] k<kmax -> (s1'=floor(1.0 * c1)) & (c1'= min(rmax, floor( (c1 - s1') + 
-((s1' + s2' + s3' < rneeded) ? 0: ( (s1' + s2' + s3' = rneeded)? roptimum: ( -.01429*(s1'+s2'+s3' - rneeded) + rneeded * scaling) ) ) ) ) );
+((s1' + s2' + s3' < rneeded) ? 0: ( (s1' + s2' + s3' = rneeded)? roptimum/ n: ( -.01429*(s1'+s2'+s3' - rneeded) + rneeded * scaling) / n) ) ) ) );
 
       	[done1] k>=kmax -> (c1'=c1) & (s1'=s1);
 
@@ -194,9 +194,9 @@ endrewards
 
 // a philosopher is hungry
 label "error" = c1 + c2 + c3 < rneeded ; 
-label "good" = c1 + c2 + c3 > rneeded * 2 ; 
+label "good" = c1 + c2 + c3 > rneeded *2 ; 
 
-label "perfect" = s1 + s1 + s1 = rneeded;
+label "perfect" = s1 + s2 + s3 = rneeded;
 
 rewards "done1"
 	k=kmax : c1 - einit;
